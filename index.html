@@ -266,6 +266,10 @@
                 <label for="image-name">Docker Image Name (optional)</label>
                 <input type="text" id="image-name" placeholder="my_image" />
             </div>
+            <div class="form-group">
+                <label for="github-token">GitHub Token (optional, for private repos)</label>
+                <input type="text" id="github-token" placeholder="ghp_yourtoken" />
+            </div>
             <button id="scan-btn">Scan Repository</button>
         </section>
         
@@ -311,6 +315,7 @@
             // DOM elements
             const repoUrlInput = document.getElementById('repo-url');
             const imageNameInput = document.getElementById('image-name');
+            const githubTokenInput = document.getElementById('github-token');
             const scanBtn = document.getElementById('scan-btn');
             const statusSection = document.getElementById('status-section');
             const statusDot = document.getElementById('status-dot');
@@ -344,6 +349,7 @@
             scanBtn.addEventListener('click', async () => {
                 const repoUrl = repoUrlInput.value.trim();
                 const imageName = imageNameInput.value.trim() || 'my_image';
+                const githubToken = githubTokenInput.value.trim();
                 
                 if (!repoUrl) {
                     alert('Please enter a GitHub repository URL');
@@ -363,7 +369,7 @@
                 
                 // In a real implementation, this would be an API call to your backend
                 try {
-                    await mockScanProcess(repoUrl, imageName);
+                    await mockScanProcess(repoUrl, imageName, githubToken);
                     
                     // Update status to success
                     statusDot.className = 'status-dot success';
@@ -396,10 +402,14 @@
             }
             
             // Mock scanning process with realistic steps
-            async function mockScanProcess(repoUrl, imageName) {
+            async function mockScanProcess(repoUrl, imageName, githubToken) {
                 // Step 1: Clone repository
                 addLogEntry(`Cloning repository from '${repoUrl}'...`);
                 await delay(2000);
+                if (githubToken) {
+                    addLogEntry(`Using GitHub token for private repository access.`);
+                    await delay(1000);
+                }
                 addLogEntry(`Repository cloned to 'cloned_repo'.`);
                 
                 // Step 2: Check/create Dockerfile

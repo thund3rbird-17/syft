@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Repo SBOM Scanner</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--dark-color);
+            font-size: 1.1rem;
+        }
+        
+        .input-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .status-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: none;
+        }
+        
+        .status-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-dot.pending {
+            background-color: #f39c12;
+        }
+        
+        .status-dot.success {
+            background-color: var(--success-color);
+        }
+        
+        .status-dot.error {
+            background-color: var(--danger-color);
+        }
+        
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .log-timestamp {
+            color: #6c757d;
+            font-size: 0.85em;
+            margin-right: 8px;
+        }
+        
+        .results-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid var(--secondary-color);
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .sbom-summary {
+            margin-bottom: 20px;
+        }
+        
+        .summary-item {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .summary-label {
+            flex: 0 0 150px;
+            font-weight: 600;
+        }
+        
+        .summary-value {
+            flex: 1;
+        }
+        
+        .packages-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .packages-table th,
+        .packages-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .packages-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .packages-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .raw-json {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            white-space: pre;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 768px) {
+            .summary-item {
+                flex-direction: column;
+            }
+            
+            .summary-label {
+                flex: 0 0 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GitHub Repository SBOM Scanner</h1>
+            <p class="subtitle">Scan any GitHub repository for software bill of materials using Syft</p>
+        </header>
+        
+        <section class="input-section">
+            <div class="form-group">
+                <label for="repo-url">GitHub Repository URL</label>
+                <input type="text" id="repo-url" placeholder="https://github.com/username/repo" />
+            </div>
+            <div class="form-group">
+                <label for="image-name">Docker Image Name (optional)</label>
+                <input type="text" id="image-name" placeholder="my_image" />
+            </div>
+            <button id="scan-btn">Scan Repository</button>
+        </section>
+        
+        <section id="status-section" class="status-section">
+            <div class="status-title">
+                <div id="status-dot" class="status-dot pending"></div>
+                <h2 id="status-text">Scanning in progress...</h2>
+            </div>
+            <p id="status-description">We're processing your repository. This may take a few minutes.</p>
+            <div class="log-container" id="log-container"></div>
+        </section>
+        
+        <section id="results-section" class="results-section">
+            <h2>Scan Results</h2>
+            <div class="tabs">
+                <div class="tab active" data-tab="summary">Summary</div>
+                <div class="tab" data-tab="packages">Packages</div>
+                <div class="tab" data-tab="raw">Raw SBOM</div>
+            </div>
+            
+            <div id="summary-tab" class="tab-content active">
+                <div class="sbom-summary" id="sbom-summary">
+                    <!-- Summary will be inserted here -->
+                </div>
+            </div>
+            
+            <div id="packages-tab" class="tab-content">
+                <div id="packages-container">
+                    <!-- Packages table will be inserted here -->
+                </div>
+            </div>
+            
+            <div id="raw-tab" class="tab-content">
+                <div class="raw-json" id="raw-json">
+                    <!-- Raw JSON will be inserted here -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const repoUrlInput = document.getElementById('repo-url');
+            const imageNameInput = document.getElementById('image-name');
+            const scanBtn = document.getElementById('scan-btn');
+            const statusSection = document.getElementById('status-section');
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            const statusDescription = document.getElementById('status-description');
+            const logContainer = document.getElementById('log-container');
+            const resultsSection = document.getElementById('results-section');
+            const sbomSummary = document.getElementById('sbom-summary');
+            const packagesContainer = document.getElementById('packages-container');
+            const rawJson = document.getElementById('raw-json');
+            
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Show active content
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                });
+            });
+            
+            // Mock scanning process (in a real app, this would call your backend)
+            scanBtn.addEventListener('click', async () => {
+                const repoUrl = repoUrlInput.value.trim();
+                const imageName = imageNameInput.value.trim() || 'my_image';
+                
+                if (!repoUrl) {
+                    alert('Please enter a GitHub repository URL');
+                    return;
+                }
+                
+                if (!repoUrl.startsWith('https://github.com/')) {
+                    alert('Repository URL must start with "https://github.com/"');
+                    return;
+                }
+                
+                // Reset and show status section
+                statusSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+                logContainer.innerHTML = '';
+                scanBtn.disabled = true;
+                
+                // In a real implementation, this would be an API call to your backend
+                try {
+                    await mockScanProcess(repoUrl, imageName);
+                    
+                    // Update status to success
+                    statusDot.className = 'status-dot success';
+                    statusText.textContent = 'Scan completed successfully';
+                    statusDescription.textContent = 'The repository has been scanned. View the results below.';
+                    
+                    // Display results section
+                    displayResults(mockSbomData);
+                    resultsSection.style.display = 'block';
+                } catch (error) {
+                    // Update status to error
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = 'Scan failed';
+                    statusDescription.textContent = error.message || 'An error occurred during the scan process.';
+                    addLogEntry('ERROR: ' + error.message);
+                } finally {
+                    scanBtn.disabled = false;
+                }
+            });
+            
+            // Helper function to add log entries
+            function addLogEntry(message) {
+                const now = new Date();
+                const timestamp = now.toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> ${message}`;
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            // Mock scanning process with realistic steps
+            async function mockScanProcess(repoUrl, imageName) {
+                // Step 1: Clone repository
+                addLogEntry(`Cloning repository from '${repoUrl}'...`);
+                await delay(2000);
+                addLogEntry(`Repository cloned to 'cloned_repo'.`);
+                
+                // Step 2: Check/create Dockerfile
+                await delay(1000);
+                addLogEntry(`Checking for Dockerfile in the repository...`);
+                await delay(1500);
+                addLogEntry(`No Dockerfile found. Creating a default Dockerfile...`);
+                
+                // Step 3: Build Docker image
+                await delay(1500);
+                addLogEntry(`Building Docker image '${imageName}' from directory 'cloned_repo'...`);
+                await delay(3000);
+                addLogEntry(`Docker image built successfully.`);
+                
+                // Step 4: Scan with Syft
+                await delay(1000);
+                addLogEntry(`Scanning Docker image '${imageName}' with Syft...`);
+                await delay(4000);
+                addLogEntry(`Syft scan complete. Processing SBOM report...`);
+                
+                // Step 5: Complete
+                await delay(1500);
+                addLogEntry(`Process complete. Displaying results.`);
+            }
+            
+            // Helper function for artificial delay
+            function delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            // Display the scan results
+            function displayResults(sbomData) {
+                // Display summary
+                const sourceCount = sbomData.artifact.metadata.sourceInfo.length;
+                const packageCount = sbomData.artifacts.length;
+                
+                const summaryHtml = `
+                    <div class="summary-item">
+                        <div class="summary-label">Repository:</div>
+                        <div class="summary-value">${sbomData.source.target[0]}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Scan Date:</div>
+                        <div class="summary-value">${new Date().toLocaleString()}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Base Image:</div>
+                        <div class="summary-value">${sbomData.artifact.name}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Packages:</div>
+                        <div class="summary-value">${packageCount}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Sources:</div>
+                        <div class="summary-value">${sourceCount}</div>
+                    </div>
+                `;
+                sbomSummary.innerHTML = summaryHtml;
+                
+                // Display packages table
+                let packagesHtml = `
+                    <table class="packages-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Version</th>
+                                <th>Type</th>
+                                <th>Language</th>
+                                <th>License</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                sbomData.artifacts.forEach(pkg => {
+                    packagesHtml += `
+                        <tr>
+                            <td>${pkg.name}</td>
+                            <td>${pkg.version || 'N/A'}</td>
+                            <td>${pkg.type}</td>
+                            <td>${pkg.language || 'N/A'}</td>
+                            <td>${pkg.licenses.join(', ') || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                packagesHtml += `
+                        </tbody>
+                    </table>
+                `;
+                packagesContainer.innerHTML = packagesHtml;
+                
+                // Display raw JSON
+                rawJson.textContent = JSON.stringify(sbomData, null, 2);
+            }
+            
+            // Mock SBOM data for demonstration
+            const mockSbomData = {
+                "artifact": {
+                    "name": "python:3.9-slim",
+                    "type": "container-image",
+                    "metadata": {
+                        "sourceInfo": [
+                            {
+                                "path": "GitHub Repository",
+                                "type": "git"
+                            }
+                        ]
+                    }
+                },
+                "source": {
+                    "type": "image",
+                    "target": [
+                        "https://github.com/user/repo-name"
+                    ]
+                },
+                "artifacts": [
+                    {
+                        "name": "python",
+                        "version": "3.9.5",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["PSF"]
+                    },
+                    {
+                        "name": "pip",
+                        "version": "21.1.2",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["MIT"]
+                    },
+                    {
+                        "name": "setuptools",
+                        "version": "57.0.0",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["MIT"]
+                    },
+                    {
+                        "name": "wheel",
+                        "version": "0.36.2",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["MIT"]
+                    },
+                    {
+                        "name": "requests",
+                        "version": "2.26.0",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["Apache-2.0"]
+                    },
+                    {
+                        "name": "numpy",
+                        "version": "1.21.0",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["BSD-3-Clause"]
+                    },
+                    {
+                        "name": "pandas",
+                        "version": "1.3.0",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["BSD-3-Clause"]
+                    },
+                    {
+                        "name": "flask",
+                        "version": "2.0.1",
+                        "type": "python",
+                        "language": "python",
+                        "licenses": ["BSD-3-Clause"]
+                    },
+                    {
+                        "name": "libc6",
+                        "version": "2.31-13",
+                        "type": "deb",
+                        "language": "",
+                        "licenses": ["GPL-2.0"]
+                    },
+                    {
+                        "name": "libgcc1",
+                        "version": "10.2.1-6",
+                        "type": "deb",
+                        "language": "",
+                        "licenses": ["GPL-3.0"]
+                    },
+                    {
+                        "name": "tzdata",
+                        "version": "2021a-1",
+                        "type": "deb",
+                        "language": "",
+                        "licenses": ["Public Domain"]
+                    }
+                ]
+            };
+        });
+    </script>
+</body>
+</html>
